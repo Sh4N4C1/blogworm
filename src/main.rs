@@ -1,9 +1,10 @@
 mod config;
 mod time;
 use std::sync::{Arc, Mutex};
-use console::{style, Emoji};
+use console::{Emoji};
 use colored::*;
 mod utils;
+use std::process;
 use blogworm::Summary;
 use blogworm::{Postsrc, Post};
 use indicatif::{ProgressBar,ProgressStyle};
@@ -18,16 +19,70 @@ use std::io::{self, Read, Write};
 //TODO: store post time and compare ~/.blogworm/timestamp
 //
 //
-static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍  ", "");
-static TRUCK: Emoji<'_, '_> = Emoji("🚚  ", "");
-static CLIP: Emoji<'_, '_> = Emoji("🔗  ", "");
-static PAPER: Emoji<'_, '_> = Emoji("📃  ", "");
-static SPARKLE: Emoji<'_, '_> = Emoji("✨ ", ":-)");
+#[macro_use] extern crate prettytable;
+static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍", "");
+static TRUCK: Emoji<'_, '_> = Emoji("🚚", "");
+static CLIP: Emoji<'_, '_> = Emoji("🔗", "");
+static PAPER: Emoji<'_, '_> = Emoji("📃", "");
+static SPARKLE: Emoji<'_, '_> = Emoji("✨", "");
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config: config::args::Config =  config::args::get_configs().unwrap();
+    let mut post_list: Vec<String> = vec!["".to_string()];
+    let save_path = config.save_path;
 
-    let (last_timestamp, current_timestamp) = checktimestamp().unwrap();
+
+    if !config.single_post.is_empty(){
+        if let Some(postsrc) = utils::check_name(config.single_post){
+	  		let hashmap: HashMap<Vec<String>, &Postsrc> = HashMap::new();
+      		let hashmap = Arc::new(Mutex::new(hashmap));	
+      		let  mut hashmap  = hashmap.lock().unwrap();
+            let tempname = postsrc.name;
+            for srcpost in POSTSRC_LIST.iter() {
+                if srcpost.name == tempname {
+                    hashmap.insert(utils::get_single_post_handle(&srcpost).await?, srcpost.clone());
+                }
+            }
+
+
+      		let mut blog_tasks = vec![];
+      		let total_vec_count: usize = hashmap.keys().map(|vec| vec.len()).sum();
+  
+      		let _bar = ProgressBar::new(total_vec_count.try_into().unwrap());
+      		let bar = Arc::new(Mutex::new(ProgressBar::new(total_vec_count.try_into().unwrap())));
+      		bar.lock().unwrap().set_style(ProgressStyle::with_template("[{pos}/{len}] {spinner} {msg}").unwrap().tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "));
+      		let new_post_list: Arc<Mutex<Vec<Post>>> = Arc::new(Mutex::new(vec![]));
+  
+  
+      		for (post_list, postsrc) in hashmap.clone(){
+  
+          		for post in post_list {
+              		let progress_clone = Arc::clone(&bar);
+              		let new_post_list_clone = Arc::clone(&new_post_list);
+              		let task = task::spawn(async move { match utils::get_post_from_link(post, postsrc).await {
+                  		Ok(post) => {
+                      		progress_clone.lock().unwrap().set_message(format!("\n[+] {} Post Title: {}\n[+] {} Post author: {}",PAPER, post.title.red().bold(), LOOKING_GLASS, post.author.blue().bold()));
+                      		progress_clone.lock().unwrap().inc(1);
+                  		}
+                  		Err(error) => {
+                      		eprintln!("Error: {}",error);
+                  		}
+              		}});    
+              blog_tasks.push(task);
+                }
+            }
+            for task in blog_tasks{
+                task.await.expect("Fail to join taks");
+            }
+            process::exit(1);
+    }else{
+        println!("[X] Not found post name!");
+        process::exit(0);
+    }
+}
+    
+    let (last_timestamp, _current_timestamp) = checktimestamp().unwrap();
     let hashmap: HashMap<Vec<String>, &Postsrc> = HashMap::new();
     let hashmap = Arc::new(Mutex::new(hashmap));
     
@@ -44,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match utils::get_blog_link_from_postsrc(postsrc).await {
                 Ok(result) => {
                     let (website, mut post_list) = result;
-                    let mut result_list = 
+                    let _result_list = 
                     for post in post_list.iter_mut(){
                         let temp_url = website.split('/').take(3).collect::<Vec<&str>>().join("/");
                         if !temp_url.ends_with('/'){
@@ -77,7 +132,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut blog_tasks = vec![];
     let total_vec_count: usize = hashmap.keys().map(|vec| vec.len()).sum();
 
-    let bar = ProgressBar::new(total_vec_count.try_into().unwrap());
+    let _bar = ProgressBar::new(total_vec_count.try_into().unwrap());
     let bar = Arc::new(Mutex::new(ProgressBar::new(total_vec_count.try_into().unwrap())));
     bar.lock().unwrap().set_style(ProgressStyle::with_template("[{pos}/{len}] {spinner} {msg}").unwrap().tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "));
     let new_post_list: Arc<Mutex<Vec<Post>>> = Arc::new(Mutex::new(vec![]));
@@ -118,12 +173,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("[*] Not found new Post! :)")
 
     }else {
-        
-
-        let save_path = config.get_save_path();
         let clonelist = convert_arc_mutex_to_vec(new_post_list);
-        utils::save_new_post_to_file(clonelist,save_path);
-            
+        let _ = utils::save_new_post_to_file(clonelist,&save_path);
     }
     Ok(())
 }

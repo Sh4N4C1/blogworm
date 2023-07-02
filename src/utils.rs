@@ -1,20 +1,17 @@
 use reqwest;
-use serde::{Serialize, Deserialize};
-use std::sync::{Arc, Mutex};
-use std::path::PathBuf;
+use colored::*;
 use tokio::task;
-use std::error::Error;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar,ProgressStyle};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use scraper::{Html, Selector};
 use chrono::{DateTime, Local, TimeZone};
-use std::io::{self, Read, Write};
-use std::fs::{self, File};
+use std::io::{Write};
+use std::fs::{File};
 use blogworm::Postsrc;
-use blogworm::{Post, Show};
+use blogworm::{Post};
 use super::time::parse_time;
-use std::collections::HashMap;
 use serde_json;
-
 
 pub async fn send_request(url: String) -> Result<String, Box<dyn std::error::Error>> {
     let reponse = reqwest::get(url.to_string()).await?;
@@ -52,13 +49,6 @@ pub fn parse_post(document_body: &str, time_class: &str, title_class: &str, auth
     let title_values: Vec<String> = handle_parse_post(title_class, &document);
     let author_values: Vec<String> = handle_parse_post(author_class, &document);
     let content_values: Vec<String> = handle_parse_post(content_class, &document);
-    //if post_id == 2 {
-     //   println!("{}", time_values[0]);
-      //  println!("{}", title_values[0]);
-        //println!("{}", author_values[0]);
-        //println!("{}", content_values[0]);
-//        println!("[CHECK] time: {}\ntitle: {}\nauthor: {}\ncontent:{}\n", time_values[0],title_values[0],author_values[0],content_values[0]);
-    //}
     let parsed_time = parse_time(post_id, time_values[0].clone());
     Ok(Post {content: content_values[0].clone(), author: author_values[0].clone(), title: title_values[0].clone(), create_timestamp: parsed_time, url: post_url})
 }
@@ -74,13 +64,9 @@ pub async fn get_blog_link_from_postsrc(postsrc: &Postsrc) -> Result<(String, Ve
 
     match body {
           Ok(document_body) => {
-            //println!("[*] Success Get {}", website);
             let a_link_list  = parse_postsrc(document_body.as_str(), link_class.as_str(), postsrc.postsrc_id);
             match a_link_list {
                 Ok(a_values) => {
-                    //for iteam in &a_values{
-                     //   println!("[*] {} POST BLOG: {}", website, iteam);
-                    //}
                     Ok((website.clone(), a_values))
                 }
                 Err(error) => {
@@ -102,9 +88,7 @@ pub async fn get_post_from_link(post_url: String, postsrc: &Postsrc) -> Result<P
     let body = send_request(post_url.to_string()).await;
     match body {
         Ok(document_body) => {
-            //println!("[*] Success Get {}", post_url);
             let post = parse_post(document_body.as_str(), postsrc.time_class.as_str(), postsrc.title_class.as_str(), postsrc.author_class.as_str(), postsrc.content_class.as_str(), postsrc.postsrc_id, post_url).unwrap();
-            //post.show_post();
             Ok(post)
 
         }
@@ -127,18 +111,47 @@ pub fn save_new_post_to_file(new_post_list: Vec<Post>, save_path: &str) -> Resul
     let json = serde_json::to_string(&new_post_list).unwrap();
     let mut file = File::create(save_path).expect("Failed to create file.");
     file.write_all(json.as_bytes()).expect("Failed to write to file.");
-    //let mut homedir = dirs::home_dir().expect("Fail to get home dir");
-    //homedir.push(".blogworm");
-    //std::fs::create_dir_all(&homedir).expect("Fail to create dir");
-    //homedir.push("new_post.json");
     Ok(())
 
 }
 
+pub async fn get_single_post_handle(postsrc: &Postsrc) -> Result<Vec<String>, Box<dyn std::error::Error>>{
 
-
-
-
-
-
-
+    match get_blog_link_from_postsrc(&postsrc).await {
+        Ok(result) => {
+            let (website, mut post_list) = result;
+            for post in post_list.iter_mut(){
+                let temp_url = website.split('/').take(3).collect::<Vec<&str>>().join("/");
+                if !temp_url.ends_with('/'){
+                    *post = temp_url + "/" + post;
+                }else {
+                    *post = temp_url + post;
+                }
+            };
+            Ok(post_list)
+        }
+        Err(error) => {
+            eprintln!("Error: {}",error);
+            return Err(error)
+        }
+    }
+    
+}
+pub fn check_name(postname: String) -> Option<Postsrc>{
+    let mut flag =false;
+    for postsrc in crate::POSTSRC_LIST.iter() {
+        if postname == postsrc.name {
+            let name = &postsrc.name;
+            let postsrc_id = &postsrc.postsrc_id;
+            let link_class = &postsrc.link_class;
+            let website = &postsrc.website;
+            let author_class = &postsrc.author_class;
+            let content_class = &postsrc.content_class;
+            let time_class = &postsrc.time_class;
+            let title_class = &postsrc.title_class;
+            let result :Postsrc = Postsrc{name: name.to_string(), postsrc_id: postsrc.postsrc_id, website: website.to_string(), link_class: link_class.to_string(), author_class: author_class.to_string(), content_class: content_class.to_string(), title_class: title_class.to_string(), time_class: time_class.to_string()};
+            return Some(result);
+        } 
+    }
+    None
+}

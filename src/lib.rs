@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use std::sync::Mutex;
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Local, TimeZone};
 use colored::Colorize;
@@ -12,6 +13,7 @@ lazy_static! {
     pub static ref POSTSRC_LIST: Vec<Postsrc> = vec![
         Postsrc {
             postsrc_id: 1,
+            name: "sonarsource".to_string(),
             website: "https://www.sonarsource.com/blog/".to_string(),
             link_class: "css-1ovxvot.e1yv2nyc5".to_string(),
             author_class: "p.css-2onphd.efy4oos3".to_string(),
@@ -21,6 +23,7 @@ lazy_static! {
         },
         Postsrc {
             postsrc_id: 2,
+            name: "synacktiv".to_string(),
             website: "https://www.synacktiv.com/publications".to_string(),
             link_class: "link".to_string(),
             author_class: "span.author-name".to_string(),
@@ -37,6 +40,7 @@ pub trait Summary {
 
 #[derive(Serialize, Deserialize)]
 pub struct Postsrc {
+    pub name: String,
     pub postsrc_id: u32,
     pub website: String,
     pub link_class: String,
@@ -49,7 +53,7 @@ pub struct Postsrc {
 
 impl Summary for Postsrc {
     fn summarize(&self) -> String {
-        format!("{}", self.website)
+        format!("[{}] {}", self.name,self.website)
     }
 }
 
