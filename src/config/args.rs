@@ -9,7 +9,7 @@ use std::error::Error;
 
 pub struct Config{
     pub save_path: String,
-    pub single_post: String,
+    pub single_post: Option<String>,
 }
 
 pub fn get_configs() -> Result<Config, Box<dyn Error>>{
@@ -31,8 +31,12 @@ pub fn get_configs() -> Result<Config, Box<dyn Error>>{
     }
 
     let args =  app.clone().get_matches();
+    if app.get_matches().is_present("get"){
+       return  Ok(Config {save_path: args.value_of("save").unwrap().to_string(), single_post: Some(args.value_of("get").unwrap().to_string())});
+
+    }
     let save_path = args.value_of("save").unwrap();
-    let single_post = args.value_of("get").unwrap();
+//    let single_post = args.value_of("get").unwrap();
 
 
     println!("[*] Post list will save AT: {}", save_path);
@@ -46,11 +50,7 @@ pub fn get_configs() -> Result<Config, Box<dyn Error>>{
         .duration_since(UNIX_EPOCH)
         .expect("Failed to get current timestamp")
         .as_secs();
-    Ok(Config {save_path: save_path.to_string(), single_post: single_post.to_string()})
+    Ok(Config {save_path: save_path.to_string(), single_post: None})
 
 }
-impl Config {
-    pub fn get_save_path(&self) -> &str{
-        &self.save_path
-    }
-}
+

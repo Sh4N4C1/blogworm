@@ -1,4 +1,5 @@
 mod config;
+use prettytable::format;
 mod time;
 use std::sync::{Arc, Mutex};
 use console::{Emoji};
@@ -20,6 +21,8 @@ use std::io::{self, Read, Write};
 //
 //
 #[macro_use] extern crate prettytable;
+use prettytable::{Table, Row, Cell};
+
 static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍", "");
 static TRUCK: Emoji<'_, '_> = Emoji("🚚", "");
 static CLIP: Emoji<'_, '_> = Emoji("🔗", "");
@@ -33,10 +36,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let save_path = config.save_path;
 
 
-    if !config.single_post.is_empty(){
-        if let Some(postsrc) = utils::check_name(config.single_post){
+    if let Some(name) = config.single_post{
+        
+        if let Some(postsrc) = utils::check_name(name){
+            println!("[*] {} Init...", SPARKLE);
 	  		let hashmap: HashMap<Vec<String>, &Postsrc> = HashMap::new();
       		let hashmap = Arc::new(Mutex::new(hashmap));	
+            let table = Arc::new(Mutex::new(Table::new()));
+            table.lock().unwrap().set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+            table.lock().unwrap().add_row(row!["Title","URL"]);
       		let  mut hashmap  = hashmap.lock().unwrap();
             let tempname = postsrc.name;
             for srcpost in POSTSRC_LIST.iter() {
@@ -53,15 +61,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       		let bar = Arc::new(Mutex::new(ProgressBar::new(total_vec_count.try_into().unwrap())));
       		bar.lock().unwrap().set_style(ProgressStyle::with_template("[{pos}/{len}] {spinner} {msg}").unwrap().tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "));
       		let new_post_list: Arc<Mutex<Vec<Post>>> = Arc::new(Mutex::new(vec![]));
+            println!("[*] {} Init Done!", SPARKLE);
   
   
       		for (post_list, postsrc) in hashmap.clone(){
   
           		for post in post_list {
               		let progress_clone = Arc::clone(&bar);
+                    let table_clone = Arc::clone(&table);
               		let new_post_list_clone = Arc::clone(&new_post_list);
               		let task = task::spawn(async move { match utils::get_post_from_link(post, postsrc).await {
                   		Ok(post) => {
+//                            table.add_row(row!["Title", "Author","URL", "Contents"]);
+                            table_clone.lock().unwrap().add_row(row![post.title, post.url]);
                       		progress_clone.lock().unwrap().set_message(format!("\n[+] {} Post Title: {}\n[+] {} Post author: {}",PAPER, post.title.red().bold(), LOOKING_GLASS, post.author.blue().bold()));
                       		progress_clone.lock().unwrap().inc(1);
                   		}
@@ -75,6 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             for task in blog_tasks{
                 task.await.expect("Fail to join taks");
             }
+            table.lock().unwrap().printstd();
             process::exit(1);
     }else{
         println!("[X] Not found post name!");
