@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use std::sync::Mutex;
+
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Local, TimeZone};
 use colored::Colorize;
@@ -31,6 +31,16 @@ lazy_static! {
             title_class: "span[property='schema:name']".to_string(),
             content_class: "div.introduction".to_string(),
 
+        },
+        Postsrc {
+            postsrc_id: 3,
+            name: "medium".to_string(),
+            website: "https://medium.com/tag/pentest/latest".to_string(),
+            link_class: "af.ag.ah.ai.aj.ak.al.am.an.ao.ap.aq.ar.as.at".to_string(),
+            title_class: "meta[name='title']".to_string(),
+            author_class: "meta[name='author']".to_string(),
+            time_class: "meta[property='article:published_time']".to_string(),
+            content_class: "meta[property='og:description']".to_string(),
         }
     ];
 }
@@ -72,7 +82,7 @@ pub trait Show {
 
 #[warn(deprecated)]
 pub fn timestamp_to_readable(timestamp: u64) -> DateTime<Local>{
-    let timestamp = chrono::NaiveDateTime::from_timestamp(timestamp as i64, 0);
+    let timestamp = chrono::NaiveDateTime::from_timestamp_opt(timestamp as i64, 0).unwrap();
     Local.from_utc_datetime(&timestamp)
 }
 

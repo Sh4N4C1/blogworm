@@ -1,10 +1,6 @@
 use reqwest;
-use colored::*;
-use tokio::task;
-use indicatif::{ProgressBar,ProgressStyle};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use scraper::{Html, Selector};
+use std::collections::HashSet;
 use chrono::{DateTime, Local, TimeZone};
 use std::io::{Write};
 use std::fs::{File};
@@ -14,6 +10,7 @@ use super::time::parse_time;
 use serde_json;
 
 pub async fn send_request(url: String) -> Result<String, Box<dyn std::error::Error>> {
+//    println!("[DEBUG] {}",url);
     let reponse = reqwest::get(url.to_string()).await?;
     let body = reponse.text().await?;
     Ok(body)
@@ -31,6 +28,31 @@ pub fn parse_postsrc(document_body: &str, link_class: &str, post_id: u32) -> Res
             .collect();
 
 		Ok(a_values)
+    }else if post_id == 3{
+        let document = Html::parse_document(&document_body);
+        let div_selector = Selector::parse("div.l:not([class*= ' '])").unwrap();
+        let a_selector = Selector::parse(&format!("a.{}:not([href*='/tag/pentest*'])", link_class)).unwrap();
+
+        let a_values: Vec<String> = document
+            .select(&div_selector)
+            .filter(|div| {
+                let classes = div.value().attr("class").unwrap_or("");
+                classes.split_whitespace().all(|class| class == "l")
+            })
+            .flat_map(|div| div.select(&a_selector))
+            .filter_map(|a| {
+
+                let href = a.value().attr("href").unwrap_or("");
+                if href.starts_with("/@") && href.matches('/').count() == 2{
+                    Some(extract_path(href).unwrap().to_owned())
+                }else{
+                    None
+                }
+            }) 
+            .collect();
+       // println!("[!]DEBUG: {:?}",a_values);
+        Ok(a_values.into_iter().collect::<HashSet<String>>().into_iter().collect())
+
     }else{
         let document = Html::parse_document(&document_body);
         let a_selector = Selector::parse(&format!("a.{}", link_class)).unwrap();
@@ -45,16 +67,26 @@ pub fn parse_postsrc(document_body: &str, link_class: &str, post_id: u32) -> Res
 
 pub fn parse_post(document_body: &str, time_class: &str, title_class: &str, author_class: &str, content_class: &str, post_id: u32, post_url: String) -> Result<Post, Box<dyn std::error::Error>>{
     let document = Html::parse_document(&document_body);
-    let time_values: Vec<String> = handle_parse_post(time_class, &document);
-    let title_values: Vec<String> = handle_parse_post(title_class, &document);
-    let author_values: Vec<String> = handle_parse_post(author_class, &document);
-    let content_values: Vec<String> = handle_parse_post(content_class, &document);
+    let time_values: Vec<String> = handle_parse_post(time_class, &document, post_id);
+    let title_values: Vec<String> = handle_parse_post(title_class, &document, post_id);
+    let author_values: Vec<String> = handle_parse_post(author_class, &document, post_id);
+    let content_values: Vec<String> = handle_parse_post(content_class, &document, post_id);
+//    println!("[DEBUG] {:?}",content_values);
+//  println!("[DEBUG] {:?}",time_values);
+//println!("[DEBUG] {:?}",author_values);
+//println!("[DEBUG] {:?}",title_values);
+
     let parsed_time = parse_time(post_id, time_values[0].clone());
     Ok(Post {content: content_values[0].clone(), author: author_values[0].clone(), title: title_values[0].clone(), create_timestamp: parsed_time, url: post_url})
 }
-pub fn handle_parse_post(class_name: &str, document: &Html) -> Vec<String>{
-    let abc_selector = Selector::parse(class_name).unwrap();
-    document.select(&abc_selector).map(|a| a.inner_html()).collect()
+pub fn handle_parse_post(class_name: &str, document: &Html, post_id: u32) -> Vec<String>{
+    if post_id == 3 {
+        let abc_selector = Selector::parse(class_name).unwrap();
+        document.select(&abc_selector).filter_map(|a| a.value().attr("content").map(String::from)).collect()
+    }else {
+        let abc_selector = Selector::parse(class_name).unwrap();
+        document.select(&abc_selector).map(|a| a.inner_html()).collect()
+    }
     
 }
 pub async fn get_blog_link_from_postsrc(postsrc: &Postsrc) -> Result<(String, Vec<String>), Box<dyn std::error::Error>>{
@@ -99,10 +131,9 @@ pub async fn get_post_from_link(post_url: String, postsrc: &Postsrc) -> Result<P
 
     }
 }
-
 #[warn(deprecated)]
 pub fn timestamp_to_readable(timestamp: u64) -> DateTime<Local>{
-    let timestamp = chrono::NaiveDateTime::from_timestamp(timestamp as i64, 0);
+    let timestamp = chrono::NaiveDateTime::from_timestamp_opt(timestamp as i64, 0).unwrap();
     Local.from_utc_datetime(&timestamp)
 }
 
@@ -122,11 +153,13 @@ pub async fn get_single_post_handle(postsrc: &Postsrc) -> Result<Vec<String>, Bo
             let (website, mut post_list) = result;
             for post in post_list.iter_mut(){
                 let temp_url = website.split('/').take(3).collect::<Vec<&str>>().join("/");
-                if !temp_url.ends_with('/'){
-                    *post = temp_url + "/" + post;
-                }else {
-                    *post = temp_url + post;
+                if post.starts_with('/'){
+                     *post = crate::replace_second_slash(&(temp_url +"/" + post)); 
                 }
+                else{
+                     *post = crate::replace_second_slash(&(temp_url +"//" + post));
+                }
+
             };
             Ok(post_list)
         }
@@ -138,11 +171,11 @@ pub async fn get_single_post_handle(postsrc: &Postsrc) -> Result<Vec<String>, Bo
     
 }
 pub fn check_name(postname: String) -> Option<Postsrc>{
-    let mut flag =false;
+    let _flag =false;
     for postsrc in crate::POSTSRC_LIST.iter() {
         if postname == postsrc.name {
             let name = &postsrc.name;
-            let postsrc_id = &postsrc.postsrc_id;
+            let _postsrc_id = &postsrc.postsrc_id;
             let link_class = &postsrc.link_class;
             let website = &postsrc.website;
             let author_class = &postsrc.author_class;
@@ -154,4 +187,12 @@ pub fn check_name(postname: String) -> Option<Postsrc>{
         } 
     }
     None
+}
+
+fn extract_path(url: &str) -> Option<&str> {
+    if let Some(query_start) = url.find('?') {
+        Some(&url[..query_start])
+    } else {
+        None
+    }
 }

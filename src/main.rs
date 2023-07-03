@@ -21,7 +21,7 @@ use std::io::{self, Read, Write};
 //
 //
 #[macro_use] extern crate prettytable;
-use prettytable::{Table, Row, Cell};
+use prettytable::{Table};
 
 static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍", "");
 static TRUCK: Emoji<'_, '_> = Emoji("🚚", "");
@@ -32,7 +32,7 @@ static SPARKLE: Emoji<'_, '_> = Emoji("✨", "");
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config: config::args::Config =  config::args::get_configs().unwrap();
-    let mut post_list: Vec<String> = vec!["".to_string()];
+    let _post_list: Vec<String> = vec!["".to_string()];
     let save_path = config.save_path;
 
 
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           		for post in post_list {
               		let progress_clone = Arc::clone(&bar);
                     let table_clone = Arc::clone(&table);
-              		let new_post_list_clone = Arc::clone(&new_post_list);
+              		let _new_post_list_clone = Arc::clone(&new_post_list);
               		let task = task::spawn(async move { match utils::get_post_from_link(post, postsrc).await {
                   		Ok(post) => {
 //                            table.add_row(row!["Title", "Author","URL", "Contents"]);
@@ -103,23 +103,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let mut tasks = vec![];
     println!("[+] {} Starting update post link...",TRUCK);
+    let bar = Arc::new(Mutex::new(ProgressBar::new(POSTSRC_LIST.len().try_into().unwrap())));
+    //bar.lock().unwrap().set_style(ProgressStyle::with_template("[{pos}/{len}] {spinner} {msg}").unwrap().tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "));
+
     for postsrc in POSTSRC_LIST.iter() {
         let hashmap_clone = Arc::clone(&hashmap);
+
+        let progress_clone = Arc::clone(&bar);
         let postsrc_clone = Arc::new(postsrc.clone());
         println!("[*]{}PostSrc: {}", CLIP, postsrc.summarize());
 
         let task = task::spawn(async move {
             match utils::get_blog_link_from_postsrc(postsrc).await {
                 Ok(result) => {
+
                     let (website, mut post_list) = result;
+                    progress_clone.lock().unwrap().set_message(format!("\n[+] {} Post Website: {}\n",PAPER, website.red().bold()));
+                    progress_clone.lock().unwrap().inc(1);
                     let _result_list = 
                     for post in post_list.iter_mut(){
                         let temp_url = website.split('/').take(3).collect::<Vec<&str>>().join("/");
-                        if !temp_url.ends_with('/'){
-                            *post = temp_url + "/" + post;
+                        if post.starts_with('/'){
+                            *post = replace_second_slash(&(temp_url +"/" + post));
                         }else{
-                            *post = temp_url + post;
+                            *post = replace_second_slash(&(temp_url + "//" +  post));
                         }
+
                     };
                     let mut hashmap = hashmap_clone.lock().unwrap();
                     hashmap.insert(post_list, &postsrc_clone);
@@ -133,13 +142,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tasks.push(task);
 
     }
-    let bar = ProgressBar::new(tasks.len().try_into().unwrap());
+//    let bar = ProgressBar::new(tasks.len().try_into().unwrap());
     for task in tasks {
-        bar.inc(1);
+ //       bar.inc(1);
         task.await.expect("Failed to join task") 
     }
+
     println!("[*] Success update All PosrtSrc! {}", SPARKLE);
-    bar.finish();
+  //  bar.finish();
 
     let  hashmap  = hashmap.lock().unwrap();
     let mut blog_tasks = vec![];
@@ -236,4 +246,15 @@ fn convert_arc_mutex_to_vec(arc_mutex: Arc<Mutex<Vec<Post>>>) -> Vec<Post> {
     let mutex = Arc::try_unwrap(arc_mutex).expect("Failed to unwrap Arc");
     let inner = mutex.into_inner().expect("Failed to get inner value from Mutex");
     inner
+}
+fn replace_second_slash(string: &str) -> String {
+    if let Some(start) = string.find("//") {
+        if let Some(end) = string[start + 2..].find('/') {
+            let offset = start + end + 2;
+            let mut modified_string = String::from(string);
+            modified_string.replace_range(offset..offset + 1, "");
+            return modified_string;
+        }
+    }
+    String::from(string)
 }
