@@ -11,7 +11,7 @@ use super::time::parse_time;
 use serde_json;
 
 pub async fn send_request(url: String) -> Result<String, Box<dyn std::error::Error>> {
-   // println!("[DEBUG] {}",url);
+    //println!("[DEBUG] {}",url);
     let reponse = reqwest::get(url.to_string()).await?;
     let body = reponse.text().await?;
     Ok(body)
@@ -75,6 +75,17 @@ pub fn parse_postsrc(document_body: &str, link_class: &str, post_id: u32) -> Res
 
 		Ok(paths)
 
+    }else if post_id == 5{
+        let document = Html::parse_document(&document_body);
+        let a_selector = Selector::parse(link_class).unwrap();
+        let a_values: Vec<String> = document
+            .select(&a_selector)
+            .filter_map(|a|{
+                let a_result = a.value().attr("href").unwrap();
+                let path = a_result.split('/').filter(|&s| !s.is_empty()).last().unwrap().to_string();
+                Some(path)
+            }).collect();
+        Ok(a_values)
     }else{
  //       println!("{}",&document_body);
         let document = Html::parse_document(&document_body);
@@ -97,7 +108,7 @@ pub fn parse_post(document_body: &str, time_class: &str, title_class: &str, auth
     let content_values: Vec<String> = handle_parse_post(content_class, &document, post_id);
    //println!("[DEBUG] {:?}",content_values);
   //println!("[DEBUG] {:?}",time_values);
-//println!("[DEBUG] {:?}",author_values);
+  //println!("[DEBUG] {:?}",author_values);
 //println!("[DEBUG] {:?}",title_values);
 
     let parsed_time = parse_time(post_id, time_values[0].clone());
@@ -107,6 +118,17 @@ pub fn handle_parse_post(class_name: &str, document: &Html, post_id: u32) -> Vec
     if post_id == 3 || post_id == 4{
         let abc_selector = Selector::parse(class_name).unwrap();
         document.select(&abc_selector).filter_map(|a| a.value().attr("content").map(String::from)).collect()
+    }else if post_id == 5{
+        if  class_name == "a.author.url.fn" {
+            let abc_selector = Selector::parse(class_name).unwrap();
+            document.select(&abc_selector).map(|a| a.inner_html()).collect()
+        }else if class_name == "time.entry-date.published" {
+            let abc_selector = Selector::parse(class_name).unwrap();
+            document.select(&abc_selector).filter_map(|a| a.value().attr("datetime").map(String::from)).collect()
+        }else {
+            let abc_selector = Selector::parse(class_name).unwrap();
+            document.select(&abc_selector).filter_map(|a| a.value().attr("content").map(String::from)).collect()
+        }
     }else {
         let abc_selector = Selector::parse(class_name).unwrap();
         document.select(&abc_selector).map(|a| a.inner_html()).collect()

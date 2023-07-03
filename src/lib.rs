@@ -51,6 +51,16 @@ lazy_static! {
             author_class: "meta[name='twitter:title']".to_string(),
             time_class: "meta[property='article:published_time']".to_string(),
             content_class: "meta[property='og:description']".to_string(),
+        },
+        Postsrc {
+            postsrc_id: 5,
+            name: "ptsecurity".to_string(),
+            website: "https://swarm.ptsecurity.com/".to_string(),
+            link_class: "a[rel='bookmark']".to_string(),
+            title_class: "meta[property='og:title']".to_string(),
+            content_class: "meta[property='og:description']".to_string(),
+            time_class: "time.entry-date.published".to_string(),
+            author_class: "a.author.url.fn".to_string(),
         }
     ];
 }

@@ -1,4 +1,4 @@
-use chrono::{NaiveDate, TimeZone, Utc, NaiveDateTime};
+use chrono::{NaiveDate, TimeZone, Utc, NaiveDateTime, DateTime};
 
 #[allow(warnings)]
 pub fn parse_time(postid: u32, html_time: String) -> u64 {
@@ -23,6 +23,10 @@ pub fn parse_time(postid: u32, html_time: String) -> u64 {
 
     }else if postid == 4{
         let datetime = NaiveDateTime::parse_from_str(&html_time, "%Y-%m-%dT%H:%M:%S").unwrap();
+        datetime.timestamp().try_into().unwrap()
+    }else if postid == 5{
+//        let datetime = NaiveDateTime::parse_from_str(&html_time, "%Y-%m-%dT%H:%M:%S").unwrap();
+        let datetime: DateTime<Utc> = html_time.parse().unwrap();
         datetime.timestamp().try_into().unwrap()
     }else{0}
 }
