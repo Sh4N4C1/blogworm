@@ -106,10 +106,15 @@ pub fn parse_post(document_body: &str, time_class: &str, title_class: &str, auth
     let title_values: Vec<String> = handle_parse_post(title_class, &document, post_id);
     let author_values: Vec<String> = handle_parse_post(author_class, &document, post_id);
     let content_values: Vec<String> = handle_parse_post(content_class, &document, post_id);
-   //println!("[DEBUG] {:?}",content_values);
+ //println!("[DEBUG] {:?}",content_values);
   //println!("[DEBUG] {:?}",time_values);
   //println!("[DEBUG] {:?}",author_values);
 //println!("[DEBUG] {:?}",title_values);
+    if post_id == 6 {
+ //       println!("!!!{}!!!", time_values[time_values.len()-1]);
+        let parsed_time = parse_time(post_id, time_values[time_values.len()-1].clone());
+        return Ok(Post {content: content_values[0].clone(), author: author_values[0].clone(), title: title_values[0].clone(), create_timestamp: parsed_time, url: post_url});
+    }
 
     let parsed_time = parse_time(post_id, time_values[0].clone());
     Ok(Post {content: content_values[0].clone(), author: author_values[0].clone(), title: title_values[0].clone(), create_timestamp: parsed_time, url: post_url})
@@ -128,6 +133,33 @@ pub fn handle_parse_post(class_name: &str, document: &Html, post_id: u32) -> Vec
         }else {
             let abc_selector = Selector::parse(class_name).unwrap();
             document.select(&abc_selector).filter_map(|a| a.value().attr("content").map(String::from)).collect()
+        }
+    }else if post_id == 6 {
+        if class_name == "div.flex.flex-wrap.items-center.gap-x-2.font-semibold"
+        {
+            let abc_selector = Selector::parse(class_name).unwrap();
+            let div_selector = Selector::parse("span:not([class*= 'text-subtle.mx-2'])").unwrap();
+            let a_values: Vec<String> = document
+              .select(&abc_selector)
+              .flat_map(|div| div.select(&div_selector))
+              .map(|a| a.inner_html())
+              .collect();
+            a_values
+
+        }else if class_name == "div.rich-text" {
+            let abc_selector = Selector::parse(class_name).unwrap();                                                                                                
+            let h2_selector = Selector::parse("h2").unwrap();
+            let content_values: Vec<String>  = document
+                .select(&abc_selector).flat_map(|div| div.select(&h2_selector))
+                .map(|a| a.inner_html())
+                .collect();
+            content_values
+
+
+        }else {
+            let abc_selector = Selector::parse(class_name).unwrap();
+            document.select(&abc_selector).filter_map(|a| a.value().attr("content").map(String::from)).collect()
+
         }
     }else {
         let abc_selector = Selector::parse(class_name).unwrap();

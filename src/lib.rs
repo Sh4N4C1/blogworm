@@ -61,6 +61,16 @@ lazy_static! {
             content_class: "meta[property='og:description']".to_string(),
             time_class: "time.entry-date.published".to_string(),
             author_class: "a.author.url.fn".to_string(),
+        },
+        Postsrc {
+            postsrc_id: 6,
+            name: "claroty".to_string(),
+            website: "https://claroty.com/team82/research".to_string(),
+            link_class: "a.block.space-y-10".to_string(),
+            title_class: "meta[property='og:title']".to_string(),
+            author_class: "meta[name='twitter:site']".to_string(),
+            content_class: "div.rich-text".to_string(),
+            time_class: "div.flex.flex-wrap.items-center.gap-x-2.font-semibold".to_string(),
         }
     ];
 }
