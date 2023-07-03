@@ -1,4 +1,5 @@
 use reqwest;
+use regex::Regex;
 use scraper::{Html, Selector};
 use std::collections::HashSet;
 use chrono::{DateTime, Local, TimeZone};
@@ -10,7 +11,7 @@ use super::time::parse_time;
 use serde_json;
 
 pub async fn send_request(url: String) -> Result<String, Box<dyn std::error::Error>> {
-//    println!("[DEBUG] {}",url);
+   // println!("[DEBUG] {}",url);
     let reponse = reqwest::get(url.to_string()).await?;
     let body = reponse.text().await?;
     Ok(body)
@@ -53,13 +54,36 @@ pub fn parse_postsrc(document_body: &str, link_class: &str, post_id: u32) -> Res
        // println!("[!]DEBUG: {:?}",a_values);
         Ok(a_values.into_iter().collect::<HashSet<String>>().into_iter().collect())
 
-    }else{
+    }else if post_id == 4{
+        let re = Regex::new(r#"href="([^"]+)""#).unwrap();
         let document = Html::parse_document(&document_body);
-        let a_selector = Selector::parse(&format!("a.{}", link_class)).unwrap();
+        let a_selector = Selector::parse("noscript").unwrap();
+        let a_values: Vec<String> = document
+            .select(&a_selector)
+            .map(|a| a.inner_html())
+            .collect();
+        //println!("{:?}",a_values);
+       // println!("{:?}",a_values[0].as_str());
+        let mut paths = Vec::new();
+        for capture in re.captures_iter(a_values[0].as_str()){
+           if let Some(href) = capture.get(1) {
+               let value = href.as_str();
+               paths.push(value.to_string());
+           } 
+        }
+//        println!("{:?}", paths);
+
+		Ok(paths)
+
+    }else{
+ //       println!("{}",&document_body);
+        let document = Html::parse_document(&document_body);
+        let a_selector = Selector::parse(link_class).unwrap();
         let a_values: Vec<String> = document 
             .select(&a_selector)
             .filter_map(|a| a.value().attr("href").map(String::from))
             .collect();
+  //      println!("{:?}",a_values);
 		Ok(a_values)
   
     }
@@ -71,8 +95,8 @@ pub fn parse_post(document_body: &str, time_class: &str, title_class: &str, auth
     let title_values: Vec<String> = handle_parse_post(title_class, &document, post_id);
     let author_values: Vec<String> = handle_parse_post(author_class, &document, post_id);
     let content_values: Vec<String> = handle_parse_post(content_class, &document, post_id);
-//    println!("[DEBUG] {:?}",content_values);
-//  println!("[DEBUG] {:?}",time_values);
+   //println!("[DEBUG] {:?}",content_values);
+  //println!("[DEBUG] {:?}",time_values);
 //println!("[DEBUG] {:?}",author_values);
 //println!("[DEBUG] {:?}",title_values);
 
@@ -80,7 +104,7 @@ pub fn parse_post(document_body: &str, time_class: &str, title_class: &str, auth
     Ok(Post {content: content_values[0].clone(), author: author_values[0].clone(), title: title_values[0].clone(), create_timestamp: parsed_time, url: post_url})
 }
 pub fn handle_parse_post(class_name: &str, document: &Html, post_id: u32) -> Vec<String>{
-    if post_id == 3 {
+    if post_id == 3 || post_id == 4{
         let abc_selector = Selector::parse(class_name).unwrap();
         document.select(&abc_selector).filter_map(|a| a.value().attr("content").map(String::from)).collect()
     }else {

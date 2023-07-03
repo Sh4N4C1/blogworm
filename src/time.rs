@@ -21,5 +21,8 @@ pub fn parse_time(postid: u32, html_time: String) -> u64 {
         let datetime = NaiveDateTime::parse_from_str(&html_time,"%Y-%m-%dT%H:%M:%S%.3fZ").unwrap();
         datetime.timestamp().try_into().unwrap()
 
+    }else if postid == 4{
+        let datetime = NaiveDateTime::parse_from_str(&html_time, "%Y-%m-%dT%H:%M:%S").unwrap();
+        datetime.timestamp().try_into().unwrap()
     }else{0}
 }
