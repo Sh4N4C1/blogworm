@@ -188,9 +188,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         task.await.expect("Failed to join task");
     }
     bar.lock().unwrap().finish();
+    let mut new_table = Table::new();
+    new_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+    new_table.add_row(row!["TITLE", "URL"]);
     for new_post in new_post_list.lock().unwrap().iter(){
-        println!("[New] {}\n[Time] {}\n",new_post.url, new_post.create_timestamp.to_string());
-    }
+        new_table.add_row(row![new_post.title,new_post.url]);
+    };
+    new_table.printstd();
     
     if new_post_list.lock().unwrap().len() == 0 {
         println!("[*] Not found new Post! :)")
@@ -223,7 +227,7 @@ fn checktimestamp() -> io::Result<(u64, u64)>{
         println!("[*] It seems you frist times to run blogworm or timestamp file deleted");
         let datetime = timestamp_to_readable(current_timestamp);
         println!("[*] Current run blogworm AT: {}", datetime.format("%Y-%m-%d %H:%M:%S"));
-        Ok((0, current_timestamp))
+        Ok((current_timestamp, current_timestamp))
 
     } else {
         let mut file = File::open(&timestamp_file)?;
