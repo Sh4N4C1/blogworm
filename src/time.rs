@@ -2,7 +2,7 @@ use chrono::{NaiveDate, TimeZone, Utc, NaiveDateTime, DateTime};
 
 #[allow(warnings)]
 pub fn parse_time(postid: u32, html_time: String) -> u64 {
-    if postid == 1 {
+    if postid == 1 || postid == 9{
         let format_str = "%B %e, %Y";
         let date = NaiveDate::parse_from_str(html_time.as_str(), format_str).unwrap();
         let datetime = Utc.from_local_date(&date).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -34,5 +34,9 @@ pub fn parse_time(postid: u32, html_time: String) -> u64 {
         let datetime: DateTime<Utc> = DateTime::from_utc(date.and_hms(0, 0, 0), Utc);
         datetime.timestamp().try_into().unwrap()
 
+    }else if postid == 10 {
+        let date = NaiveDate::parse_from_str(&html_time, "%d %b %Y").unwrap();
+        let datetime = Utc.from_local_date(&date).unwrap().and_hms_opt(0, 0, 0).unwrap();
+        datetime.timestamp().try_into().unwrap()
     }else{0}
 }

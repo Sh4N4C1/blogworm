@@ -71,6 +71,48 @@ lazy_static! {
             author_class: "meta[name='twitter:site']".to_string(),
             content_class: "div.rich-text".to_string(),
             time_class: "div.flex.flex-wrap.items-center.gap-x-2.font-semibold".to_string(),
+        },
+        Postsrc {
+            postsrc_id: 7,
+            name: "sec-consult".to_string(),
+            website: "https://sec-consult.com/blog/".to_string(),
+            link_class: "a.news-item__link".to_string(),
+            title_class: "meta[property='og:title']".to_string(),
+            author_class: "meta[property='og:site_name'".to_string(),
+            content_class: "meta[name='description'".to_string(),
+            time_class: "time".to_string(),
+        },
+        Postsrc {
+            postsrc_id: 8,
+            name: "samcurry".to_string(),
+            website: "https://samcurry.net/blog/".to_string(),
+            link_class: "div.featured-image > a".to_string(),
+            title_class: "meta[property='og:title']".to_string(),
+            content_class: "meta[property='og:description']".to_string(),
+            author_class: "meta[property='og:site_name'".to_string(),
+            time_class: "meta[property='article:published_time']".to_string(),
+            
+        },
+        Postsrc {
+            postsrc_id: 9,
+            name: "assetnote".to_string(),
+            website: "https://blog.assetnote.io/".to_string(),
+            link_class: "a.post-link".to_string(),
+            title_class: "meta[property='og:title']".to_string(),
+            content_class: "meta[name='description']".to_string(),
+            author_class: "meta[name='author'".to_string(),
+            time_class: "p.lead.my-3".to_string(),
+
+        },
+        Postsrc {
+            postsrc_id: 10,
+            name: "doyensec".to_string(),
+            website: "https://blog.doyensec.com/".to_string(),
+            link_class: "span.post-entry".to_string(),
+            content_class: "div.post > p".to_string(),
+            title_class: "h1.post-title".to_string(),
+            author_class: "span.post-date".to_string(),
+            time_class: "data-date".to_string(),
         }
     ];
 }

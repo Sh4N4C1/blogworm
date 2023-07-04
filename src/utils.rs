@@ -75,7 +75,20 @@ pub fn parse_postsrc(document_body: &str, link_class: &str, post_id: u32) -> Res
 
 		Ok(paths)
 
-    }else if post_id == 5{
+    }else if post_id == 5 || post_id == 8{
+        if post_id == 8 {
+            let document = Html::parse_document(&document_body);
+            let a_selector = Selector::parse(link_class).unwrap();
+            let a_values: Vec<String> = document
+                .select(&a_selector)
+                .filter_map(|a|{
+            let a_result = a.value().attr("href").unwrap();
+            let path = a_result.split('/').filter(|&s| !s.is_empty()).last().unwrap().to_string() + "/";
+            Some(path)
+            }).collect();
+            return Ok(a_values);
+
+        }
         let document = Html::parse_document(&document_body);
         let a_selector = Selector::parse(link_class).unwrap();
         let a_values: Vec<String> = document
@@ -86,6 +99,27 @@ pub fn parse_postsrc(document_body: &str, link_class: &str, post_id: u32) -> Res
                 Some(path)
             }).collect();
         Ok(a_values)
+    }else if post_id ==10 {
+        let document = Html::parse_document(&document_body);
+        let a_selector = Selector::parse(link_class).unwrap();
+        let a_values: Vec<String> = document 
+            .select(&a_selector)
+            .filter_map(|a| {
+                let data_url = a.value().attr("data-url").map(String::from);
+                if let Some(url) = &data_url {
+                    if url.contains("2023"){
+                        data_url
+                    }else {
+                        None
+                    }
+                }else {
+                    None
+                }
+            })
+            .collect();
+  //      println!("{:?}",a_values);
+		return Ok(a_values);
+
     }else{
  //       println!("{}",&document_body);
         let document = Html::parse_document(&document_body);
@@ -107,27 +141,37 @@ pub fn parse_post(document_body: &str, time_class: &str, title_class: &str, auth
     let author_values: Vec<String> = handle_parse_post(author_class, &document, post_id);
     let content_values: Vec<String> = handle_parse_post(content_class, &document, post_id);
  //println!("[DEBUG] {:?}",content_values);
-  //println!("[DEBUG] {:?}",time_values);
+  //println!("[DEBUG] {:?}",time_values[0]);
   //println!("[DEBUG] {:?}",author_values);
 //println!("[DEBUG] {:?}",title_values);
     if post_id == 6 {
  //       println!("!!!{}!!!", time_values[time_values.len()-1]);
         let parsed_time = parse_time(post_id, time_values[time_values.len()-1].clone());
         return Ok(Post {content: content_values[0].clone(), author: author_values[0].clone(), title: title_values[0].clone(), create_timestamp: parsed_time, url: post_url});
+    }else if post_id == 10{
+        let parsed_time = parse_time(post_id, time_values[0].clone());
+        return Ok(Post {content: content_values[0].clone(), author: author_values[0].clone(), title: title_values[0].clone(), create_timestamp: parsed_time, url: post_url});
+
     }
 
     let parsed_time = parse_time(post_id, time_values[0].clone());
     Ok(Post {content: content_values[0].clone(), author: author_values[0].clone(), title: title_values[0].clone(), create_timestamp: parsed_time, url: post_url})
 }
 pub fn handle_parse_post(class_name: &str, document: &Html, post_id: u32) -> Vec<String>{
-    if post_id == 3 || post_id == 4{
+    if post_id == 3 || post_id == 4 || post_id == 8 || post_id == 9{
+        if class_name == "p.lead.my-3"{
+            let abc_selector = Selector::parse(class_name).unwrap();
+            let a_values :Vec<String>= document.select(&abc_selector).map(|a| a.inner_html()).collect();
+            return a_values;
+            
+        }
         let abc_selector = Selector::parse(class_name).unwrap();
         document.select(&abc_selector).filter_map(|a| a.value().attr("content").map(String::from)).collect()
-    }else if post_id == 5{
+    }else if post_id == 5 || post_id == 7{
         if  class_name == "a.author.url.fn" {
             let abc_selector = Selector::parse(class_name).unwrap();
             document.select(&abc_selector).map(|a| a.inner_html()).collect()
-        }else if class_name == "time.entry-date.published" {
+        }else if class_name == "time.entry-date.published" || class_name == "time"{
             let abc_selector = Selector::parse(class_name).unwrap();
             document.select(&abc_selector).filter_map(|a| a.value().attr("datetime").map(String::from)).collect()
         }else {
@@ -160,6 +204,41 @@ pub fn handle_parse_post(class_name: &str, document: &Html, post_id: u32) -> Vec
             let abc_selector = Selector::parse(class_name).unwrap();
             document.select(&abc_selector).filter_map(|a| a.value().attr("content").map(String::from)).collect()
 
+        }
+    }else if post_id == 10{
+        if class_name == "div.post > p"{
+            let abc_selector = Selector::parse(class_name).unwrap();
+            let first_p_inner_html: Option<String> = document
+                .select(&abc_selector)
+                .next()
+                .map(|p| p.inner_html());
+            return first_p_inner_html.into_iter().collect::<Vec<String>>();
+        }else if class_name == "h1.post-title"{
+            let abc_selector = Selector::parse(class_name).unwrap();
+            let a_values :Vec<String>= document.select(&abc_selector).map(|a| a.inner_html()).collect();
+            return a_values;
+
+        }else if class_name == "span.post-date"{
+
+              let a_selector = Selector::parse(class_name).unwrap();
+              let a_values: Vec<String> = document
+                  .select(&a_selector)
+                  .filter_map(|a|{
+              let a_result = a.inner_html();
+              let path = a_result.split("Posted by ").filter(|&s| !s.is_empty()).last().unwrap().to_string() ;
+              Some(path)
+              }).collect();
+              return a_values;
+        }else {
+            let a_selector = Selector::parse("span.post-date").unwrap();
+            let a_values: Vec<String> = document
+                    .select(&a_selector)
+                    .filter_map(|a|{
+            let a_result = a.inner_html();
+            let path = a_result.split(" - Posted by ").filter(|&s| !s.is_empty()).next().unwrap().to_string();
+            Some(path)
+            }).collect();
+            return a_values;
         }
     }else {
         let abc_selector = Selector::parse(class_name).unwrap();
